@@ -23,6 +23,7 @@ const pageTitles = {
   meetings: 'Programul Meu',
   radarmeteo: 'Radar Meteo — Reșița',
   curatenie: 'Curățenie Sala Regatului',
+  curateniegenerala: 'Curățenie generală la Sala Regatului Martorii lui Iehova',
 };
 
 let currentPage = 'dashboard';

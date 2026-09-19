@@ -36,16 +36,3 @@ function renderCuratenie() {
   el.textContent = msg || '';
   el.style.display = msg ? 'block' : 'none';
 }
-
-// ============================================
-// MODAL: CURĂȚENIE GENERALĂ
-// ============================================
-function openCuratenieGeneralaModal() {
-  const modal = document.getElementById('curatenieGeneralaModal');
-  if (modal) modal.classList.add('open');
-}
-
-function closeCuratenieGeneralaModal() {
-  const modal = document.getElementById('curatenieGeneralaModal');
-  if (modal) modal.classList.remove('open');
-}
