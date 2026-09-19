@@ -974,6 +974,7 @@ body {
   font-size: 0.9rem;
   margin-top: 4px;
 }
+
 .weather-widget {
   display: flex;
   align-items: center;
@@ -996,6 +997,71 @@ body {
   color: var(--text-muted, var(--text-secondary));
 }
 
+/* ============================================
+   RADAR METEO
+   ============================================ */
+.radar-controls {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+.radar-updated {
+  color: var(--text-muted, var(--text-secondary));
+  font-size: 0.8rem;
+}
+.radar-map-wrap {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+.radar-map-container {
+  background: var(--bg-elevated, var(--bg-surface));
+  height: 440px;
+  width: 100%;
+}
+.radar-map-status {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  font-size: 0.85rem;
+  height: 100%;
+  justify-content: center;
+  left: 0;
+  padding: 20px;
+  position: absolute;
+  text-align: center;
+  top: 0;
+  width: 100%;
+}
+.radar-legend {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+.radar-legend-title {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.radar-legend-item {
+  align-items: center;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: 0.8rem;
+  gap: 5px;
+}
+.radar-swatch {
+  border-radius: 3px;
+  display: inline-block;
+  height: 12px;
+  width: 12px;
+}
+@media (max-width: 640px) {
+  .radar-map-container { height: 320px; }
+}
 .streak-badge {
   display: flex;
   align-items: center;
@@ -1091,6 +1157,51 @@ body {
   font-weight: 500;
 }
 .card-link:hover { text-decoration: underline; }
+
+/* ============================================
+   CURĂȚENIE SALA REGATULUI
+   ============================================ */
+.curatenie-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1920 / 1280;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #dfe6ee;
+}
+.curatenie-frame img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.curatenie-caption-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4%;
+  display: flex;
+  justify-content: center;
+  padding: 0 3%;
+  pointer-events: none;
+}
+.curatenie-caption {
+  background: rgba(255, 255, 255, 0.85);
+  color: #14213d;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.25;
+  border-radius: 999px;
+  padding: clamp(8px, 1.6vw, 18px) clamp(16px, 3vw, 34px);
+  font-size: clamp(0.8rem, 2.4vw, 1.5rem);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  max-width: 96%;
+}
+@media (max-width: 480px) {
+  .curatenie-caption { border-radius: 22px; white-space: normal; }
+}
 
 /* Badges */
 .badge {
@@ -1283,12 +1394,10 @@ body {
 }
 .form-textarea.small { min-height: 70px; }
 
-/* Cuvântarea de 5 minute și Discursul principal de 10 minute: se măresc automat pe măsură ce scrii */
-#talk-notes,
-#talk10-notes {
+/* Cuvântarea de 5 minute: se mărește automat pe măsură ce scrii */
+#talk-notes {
   resize: none;
   overflow-y: hidden;
-  min-height: 100px;
 }
 
 select.form-input option { background: var(--bg-elevated); }
@@ -1322,6 +1431,91 @@ select.form-input option { background: var(--bg-elevated); }
   font-size: 0.875rem;
   font-weight: 600;
   padding: 10px 12px;
+}
+
+/* Reamintire raport lunar: bifă verde pentru "Raport trimis" */
+.vreport-sent-row {
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+.vreport-sent-label {
+  color: var(--text-primary);
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.vreport-sent-row input[type="checkbox"] {
+  accent-color: var(--green);
+  cursor: pointer;
+  flex-shrink: 0;
+  height: 22px;
+  width: 22px;
+}
+.vreport-sent-row.is-sent {
+  border-color: rgba(16,201,160,0.4);
+}
+
+/* Asistent AI: jurnal de conversație + rând de input */
+.ai-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.ai-chat-empty {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  padding: 8px 2px;
+}
+.ai-msg {
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 88%;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.ai-msg-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+.ai-msg-assistant {
+  align-self: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.ai-msg-error {
+  align-self: flex-start;
+  background: rgba(248,81,73,0.12);
+  border: 1px solid rgba(248,81,73,0.35);
+  color: var(--red);
+}
+.ai-msg-pending {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.ai-chat-input-row {
+  align-items: flex-end;
+  display: flex;
+  gap: 8px;
+}
+.ai-chat-input-row .form-textarea {
+  flex: 1;
+  margin: 0;
+  resize: none;
 }
 
 /* Profilul Vestitorului: cele 12 luni ale anului teocratic, colorabile */
@@ -1852,6 +2046,31 @@ select.form-input option { background: var(--bg-elevated); }
 /* ============================================
    TEMĂ PENTRU CURSANT - CALENDAR
    ============================================ */
+.tc-data-wrap { position: relative; }
+.tc-data-wrap .form-input { cursor: pointer; }
+.tc-cal-popup {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: 260px;
+  max-width: 90vw;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border, rgba(127,127,127,0.15));
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+  padding: 12px;
+}
+.tc-cal-popup.open { display: block; }
+.tc-cal-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.tc-cal-popup-header h4 { margin: 0; font-size: 0.88rem; }
+.tc-cal-popup-footer { text-align: center; margin-top: 8px; }
 .tc-calendar-grid { display: flex; flex-direction: column; gap: 6px; }
 .tc-cal-weekdays {
   display: grid;
@@ -2683,6 +2902,55 @@ select.form-input option { background: var(--bg-elevated); }
 }
 
 /* ============================================
+   PALETĂ DE PICTOR - selector culoare
+   (folosită la Textul Anului și la Versetul Zilei)
+   ============================================ */
+.paint-palette-trigger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), transform var(--transition);
+}
+.paint-palette-trigger:hover { background: var(--bg-hover); transform: scale(1.1); }
+
+.paint-palette {
+  display: none;
+  position: relative;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 10px 0;
+  padding: 12px 16px 12px 38px;
+  background: linear-gradient(135deg, #d9b382, #b5875a);
+  border-radius: 50% 50% 45% 10% / 65% 65% 35% 35%;
+  box-shadow: var(--shadow-sm), inset 0 1px 3px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
+}
+.paint-palette.open { display: flex; }
+.paint-palette::before {
+  /* gaura pentru degetul mare, ca la o paletă reală de pictor */
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 24px;
+  background: var(--bg-elevated);
+  border-radius: 50%;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.35);
+}
+.paint-palette .color-swatch {
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.35), 0 1px 2px rgba(0,0,0,0.3);
+}
+.paint-palette .color-swatch.active {
+  box-shadow: 0 0 0 2px #b5875a, 0 0 0 4px var(--accent), inset 0 -2px 3px rgba(0,0,0,0.25);
+}
+
+/* ============================================
    SELECTOR MARIME FONT - TEXTUL ANULUI
    ============================================ */
 .year-size-picker {
@@ -3328,6 +3596,38 @@ select.form-input option { background: var(--bg-elevated); }
   font-weight:600;
 }
 
+/* Chip-uri selectare durată - cronometru practică Predicare (1-5 min) */
+.ministry-duration-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: -6px 0 14px;
+}
+.ministry-duration-btn {
+  padding: 5px 13px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ministry-duration-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ministry-duration-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.ministry-duration-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 
 /* Fullscreen mobile fix */
 .page-fullscreen textarea {
@@ -3538,7 +3838,44 @@ select.form-input option { background: var(--bg-elevated); }
 .mini-btn-ok { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 4px 14px var(--accent-glow); }
 .mini-btn-ok:hover { background: var(--accent-hover); transform: translateY(-1px); }
 
+/* ── Sub-tab-uri Materiale Video: Viața lui Isus / JW Broadcasting ── */
+.lib-sub-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.lib-sub-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 10px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  color: var(--text-secondary);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lib-sub-tab:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.lib-sub-tab:active { transform: scale(0.96); }
+.lib-sub-tab.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-glow);
+}
+.lib-sub-tab-icon { font-size: 1.05rem; }
+.lib-sub-tab-label { font-size: 0.82rem; font-weight: 700; }
+
+.video-cat-panel { display: flex; flex-direction: column; gap: 16px; }
+.video-cat-panel.hidden { display: none; }
+
 /* ── VIDEO SERIES ── */
+#video-series-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 14px; }
+
 .video-series {
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -3552,8 +3889,24 @@ select.form-input option { background: var(--bg-elevated); }
   border-bottom: 1px solid var(--border);
 }
 .series-badge { font-size: 1.4rem; }
-.series-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); flex: 1; }
-.lib-section-title { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); margin: 0 0 10px; }
+.series-title-input {
+  font-family: var(--font-main);
+  font-size: 1rem; font-weight: 800;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 4px 8px; margin: -4px -8px;
+  flex: 1; min-width: 0;
+  transition: all 0.15s ease;
+}
+.series-title-input:hover { border-color: var(--border); background: var(--bg-base); }
+.series-title-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-base);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
 .series-count {
   font-size: 0.72rem; font-weight: 600;
   background: var(--bg-base);
@@ -3561,26 +3914,34 @@ select.form-input option { background: var(--bg-elevated); }
   border-radius: 20px;
   padding: 3px 10px;
   color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.series-delete-btn {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.series-delete-btn svg { width: 14px; height: 14px; }
+.series-delete-btn:hover { color: var(--red); border-color: var(--red); background: rgba(248,81,73,0.08); }
+
+.series-empty-hint {
+  padding: 4px 18px 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .video-toolbar {
   display: flex; justify-content: flex-end;
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 18px;
 }
-.reset-titles-btn {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 0.74rem; font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.reset-titles-btn svg { width: 13px; height: 13px; }
-.reset-titles-btn:hover { color: var(--accent); border-color: var(--accent); }
+.add-episode-btn { width: auto; padding: 9px 16px; font-size: 0.82rem; }
 
 .video-cards-list { display: flex; flex-direction: column; }
 
@@ -3775,6 +4136,9 @@ select.form-input option { background: var(--bg-elevated); }
   .lib-big-tab { padding: 14px 6px; }
   .lib-big-icon { width: 40px; height: 40px; }
   .lib-big-icon svg { width: 20px; height: 20px; }
+  .lib-sub-tabs { gap: 6px; }
+  .lib-sub-tab { padding: 11px 6px; }
+  .lib-sub-tab-label { font-size: 0.76rem; }
   .lib-big-icon-photo { width: 64px; height: 64px; }
   .lib-big-label { font-size: 0.66rem; letter-spacing: 0.04em; }
 }
@@ -4231,288 +4595,113 @@ select.form-input option { background: var(--bg-elevated); }
 }
 
 /* ============================================
-   ASISTENT AI — modul de interfață (fără logică AI conectată)
+   INDICATOR DISCRET DE SALVARE (Salvat ✓ / Se salvează… / Salvare eșuată)
    ============================================ */
-.aiassist-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  height: calc(100vh - var(--topbar-height) - 150px);
-  min-height: 420px;
-  max-width: 860px;
-}
-
-.aiassist-chat {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-}
-
-.aiassist-message {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  animation: fadeIn var(--transition);
-  max-width: 100%;
-}
-
-.aiassist-message-user {
-  flex-direction: row-reverse;
-}
-
-.aiassist-avatar {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-}
-
-.aiassist-avatar-bot {
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-}
-
-.aiassist-avatar-user {
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-}
-
-.aiassist-bubble {
-  max-width: min(72%, 560px);
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.aiassist-bubble p + p { margin-top: 8px; }
-
-.aiassist-bubble-bot {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  border-top-left-radius: 2px;
-}
-
-.aiassist-bubble-user {
-  background: var(--accent);
-  color: #fff;
-  border-top-right-radius: 2px;
-}
-
-.aiassist-inputbar {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 10px 10px 16px;
-  transition: border-color var(--transition), box-shadow var(--transition);
-}
-
-.aiassist-inputbar:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.aiassist-textarea {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  resize: none;
-  color: var(--text-primary);
-  font-family: var(--font-main);
-  font-size: 0.9rem;
-  line-height: 1.4;
-  max-height: 140px;
-  padding: 8px 0;
-}
-
-.aiassist-textarea::placeholder { color: var(--text-muted); }
-
-.aiassist-send-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-  color: #fff;
-  cursor: pointer;
-  transition: transform var(--transition), box-shadow var(--transition);
-}
-
-.aiassist-send-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px var(--accent-glow);
-}
-
-.aiassist-disclaimer {
-  text-align: center;
-  font-size: 0.75rem;
+.save-indicator {
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: transparent;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  transition: opacity var(--transition), transform var(--transition), background var(--transition), color var(--transition);
+}
+.save-indicator.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.save-indicator.is-saving {
+  color: var(--text-secondary);
+}
+.save-indicator.is-saved {
+  color: var(--green);
+  background: rgba(16,201,160,0.12);
+}
+.save-indicator.is-error {
+  color: var(--red);
+  background: rgba(248,81,73,0.12);
 }
 
 @media (max-width: 800px) {
-  .aiassist-shell { height: calc(100vh - var(--topbar-height) - 180px); }
-  .aiassist-bubble { max-width: 85%; }
+  .save-indicator { display: none; }
 }
 
 /* ============================================
-   BIBLE WORD HIGHLIGHT (Citește Biblia)
+   TELEPROMPTER (Cuvântare 5 minute / Cuvântare Publică 30 minute)
    ============================================ */
-.bible-verse-color-view {
-  position: relative;
-  line-height: 2.1;
-  overflow-y: auto;
-  cursor: default;
-}
-.bible-inline-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.bw-vnum {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  vertical-align: super;
-  user-select: none;
-}
-.bw-word {
-  cursor: pointer;
-  border-radius: 3px;
-  padding: 1px 0;
-  color: var(--text-primary);
-  transition: background var(--transition, 0.15s);
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-.bw-word:hover {
-  background: var(--bg-elevated, var(--bg-surface));
-}
-.bw-word.bw-selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.bw-word.bw-has-idea {
-  position: relative;
-}
-.bw-word.bw-has-idea::after {
-  content: '💬';
-  font-size: 0.6rem;
-  vertical-align: super;
-  margin-left: 1px;
-}
-.bw-toolbar {
-  display: none;
-  position: absolute;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  z-index: 20;
-}
-.bw-swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  padding: 0;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.bw-trash-btn {
-  width: auto;
-  height: 22px;
-  border-radius: 6px;
-  padding: 0 6px;
-  background: transparent;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.bw-idea-btn {
-  width: auto;
-  height: 22px;
-  border-radius: 6px;
-  padding: 0 8px;
-  background: var(--bg-elevated, var(--bg-surface));
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.bw-empty-hint {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  margin: 0;
-}
-.bw-edit-btn {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border-radius: 50%;
-  font-size: 1rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.bw-idea-panel {
+.teleprompter-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 10000;
   display: none;
   flex-direction: column;
-  gap: 6px;
-  position: absolute;
-  width: 260px;
-  max-width: calc(100% - 12px);
-  background: var(--bg-surface);
-  border: 2px solid var(--accent);
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  z-index: 21;
 }
-.bw-idea-textarea {
-  width: 100%;
-  min-height: 70px;
-  resize: vertical;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  color: var(--text-primary);
-  background: var(--bg-base, #fff);
-}
-.bw-idea-panel-actions {
+.teleprompter-overlay.active { display: flex; }
+.teleprompter-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #111;
+  border-bottom: 1px solid #222;
+}
+.teleprompter-btn {
+  background: #232a39;
+  color: #fff;
+  border: 1px solid #2a3140;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.teleprompter-btn:disabled { opacity: .4; cursor: default; }
+.teleprompter-btn-play { background: var(--accent); border-color: var(--accent); }
+.teleprompter-btn-close { margin-left: auto; background: #f87171; border-color: #f87171; }
+.teleprompter-slider-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ccc;
+  font-size: 12px;
+}
+.teleprompter-slider-label input[type="range"] { width: 100px; accent-color: var(--accent); }
+.teleprompter-slider-label span { width: 22px; text-align: right; font-size: 11px; color: #fff; }
+.teleprompter-title { color: #9aa3b2; font-size: 12px; }
+.teleprompter-container {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  padding: 40vh 8vw;
+  scroll-behavior: auto;
+}
+.teleprompter-text {
+  color: #fff;
+  text-align: center;
+  white-space: pre-wrap;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.teleprompter-spacer { height: 40vh; }
+.teleprompter-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 90px;
+  pointer-events: none;
+}
+.teleprompter-fade-top { top: 0; background: linear-gradient(to bottom, #000, transparent); }
+.teleprompter-fade-bottom { bottom: 0; background: linear-gradient(to top, #000, transparent); }
+
+@media (max-width: 700px) {
+  .teleprompter-topbar { padding: 8px 10px; gap: 8px; }
+  .teleprompter-slider-label input[type="range"] { width: 70px; }
+  .teleprompter-title { display: none; }
 }

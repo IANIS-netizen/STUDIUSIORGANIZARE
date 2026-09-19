@@ -35,7 +35,8 @@
           <li><strong>Studiul Turnului de Veghe</strong> — notițe pe paragrafe, pregătite din timp.</li>
           <li><strong>Profeții și împlinirea lor</strong>, <strong>Studiu biblic pe versete</strong> și <strong>calculator de cuvinte</strong> pentru cuvântări.</li>
           <li><strong>Bibliotecă</strong> — linkuri/PDF-uri de pe jw.org și materiale video redate direct din aplicație; videoclipurile nu sunt niciodată stocate sau încărcate — doar citite de pe calculator, la cerere.</li>
-        </ul> Din Setări poți exporta oricând toate datele într-un fișier JSON, ca să nu le pierzi dacă schimbi telefonul sau ștergi accidental aplicația. Ai și un export separat, în format Word, doar pentru cuvântări. Îți recomand să faci un export din când în când — mai ales înainte de o actualizare majoră a telefonului.</p>
+        </ul>
+        <p>Din Setări poți exporta oricând toate datele într-un fișier JSON, ca să nu le pierzi dacă schimbi telefonul sau ștergi accidental aplicația. Ai și un export separat, în format Word, doar pentru cuvântări. Îți recomand să faci un export din când în când — mai ales înainte de o actualizare majoră a telefonului.</p>
 
         <p><strong>📤 Trimite Cuvântări.</strong> Poți trimite o cuvântare direct altui utilizator al aplicației, fără WhatsApp sau e-mail. Datele circulă direct între cele două telefoane (conexiune criptată telefon-la-telefon), nu trec prin niciun server care le stochează. Condiție: ambele aplicații trebuie să fie deschise în același timp; dacă destinatarul nu e conectat în acel moment, trimiterea eșuează și ești anunțat imediat.</p>
 
@@ -137,6 +138,13 @@
       <button type="button" class="settings-action-btn" onclick="triggerImport()">
         <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         <span>Importă date (JSON)</span>
+      </button>
+      <div class="settings-row" id="preImportBackupRow" style="display:none">
+        <span class="settings-label">Rezervă automată (înainte de ultimul import)</span>
+        <span class="settings-value" id="preImportBackupLabel">—</span>
+      </div>
+      <button type="button" class="settings-action-btn" id="preImportBackupBtn" onclick="restorePreImportBackup()" style="display:none">
+        <span>Restaurează datele de dinainte de import</span>
       </button>
 
       <div class="settings-section-label">Trimite Cuvântări</div>

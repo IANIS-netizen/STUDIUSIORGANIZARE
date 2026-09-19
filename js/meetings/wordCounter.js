@@ -35,6 +35,18 @@ function autoGrowTextarea(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 
+// Folosit de textarea-urile "Notițe pregătire" din secțiunea Predicare
+// (Caiet Întrunire): mărește automat câmpul și actualizează contorul de
+// cuvinte aflat imediat sub el, oricâte astfel de câmpuri există pe pagină.
+function handleMinistryNoteInput(el) {
+  if (!el) return;
+  autoGrowTextarea(el);
+  const counter = el.nextElementSibling;
+  if (counter && counter.classList.contains('word-counter')) {
+    counter.textContent = formatWordCounterText(countOnlyWords(el.value));
+  }
+}
+
 function updateWordCounters() {
   const talkNotes = document.getElementById('talk-notes');
   const talkCounter = document.getElementById('talkWordCounter');
@@ -50,14 +62,6 @@ function updateWordCounters() {
   if (discursNotes && discursCounter) {
     discursCounter.textContent = formatWordCounterText(countOnlyWords(discursNotes.value));
     autoGrowTextarea(discursNotes);
-  }
-
-  const talk10Notes = document.getElementById('talk10-notes');
-  const talk10Counter = document.getElementById('talk10WordCounter');
-
-  if (talk10Notes && talk10Counter) {
-    talk10Counter.textContent = formatWordCounterText(countOnlyWords(talk10Notes.value));
-    autoGrowTextarea(talk10Notes);
   }
 }
 

@@ -29,7 +29,6 @@ function switchLibTab(target) {
   if (target === 'music' && !musicInitialized) {
     musicInitialized = true;
     restoreSavedSongs().then(renderMusicPanel);
-    restoreSavedSongsIntl().then(renderMusicPanelIntl);
   }
 }
 
@@ -40,18 +39,18 @@ let musicInitialized = false;
 function renderLibraryPage() {
   if (!Array.isArray(state.publications)) state.publications = [];
   if (!state.videoMeta || typeof state.videoMeta !== 'object') state.videoMeta = {};
+  ensureVideoSeries();
   if (!Array.isArray(state.songs)) state.songs = [];
   if (!Array.isArray(state.songsIntl)) state.songsIntl = [];
 
   if (!libraryInitialized) {
     initLibraryOnce();
     initMusicOnce();
-    initMusicIntlOnce();
     libraryInitialized = true;
   }
   renderPubs();
   renderVideoSlots();
-  if (musicInitialized) { renderMusicPanel(); renderMusicPanelIntl(); }
+  if (musicInitialized) renderMusicPanel();
 }
 
 function initLibraryOnce() {
@@ -59,21 +58,27 @@ function initLibraryOnce() {
   document.getElementById('pub-modal')?.addEventListener('click', e => {
     if (e.target === document.getElementById('pub-modal')) closePubModal();
   });
+  document.getElementById('series-modal')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('series-modal')) closeSeriesModal();
+  });
+  document.getElementById('new-series-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveNewSeries();
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closePubModal();
+      closeSeriesModal();
       if (typeof closeVideoPlayer === 'function') closeVideoPlayer();
     }
   });
 
-  document.getElementById('reset-titles-btn')?.addEventListener('click', resetEpisodeTitles);
   document.getElementById('vplayer-close')?.addEventListener('click', closeVideoPlayer);
   document.getElementById('vplayer-exit')?.addEventListener('click', closeVideoPlayer);
   document.getElementById('video-player-modal')?.addEventListener('click', e => {
     if (e.target === document.getElementById('video-player-modal')) closeVideoPlayer();
   });
 
-  const list = document.getElementById('video-cards-list');
+  const list = document.getElementById('video-series-list');
   list?.addEventListener('change', e => {
     if (!e.target.classList.contains('vslot-file')) return;
     const file = e.target.files[0];
@@ -82,32 +87,40 @@ function initLibraryOnce() {
     e.target.value = '';
   });
   list?.addEventListener('input', e => {
-    if (!e.target.classList.contains('vslot-title-input')) return;
-    state.videoMeta[e.target.dataset.slot].title = e.target.value;
+    if (e.target.classList.contains('vslot-title-input')) {
+      const ep = findEpisode(e.target.dataset.series, e.target.dataset.slot);
+      if (ep) ep.title = e.target.value;
+    } else if (e.target.classList.contains('series-title-input')) {
+      const s = findSeries(e.target.dataset.series);
+      if (s) s.name = e.target.value;
+    }
   });
   list?.addEventListener('blur', e => {
-    if (!e.target.classList || !e.target.classList.contains('vslot-title-input')) return;
-    const id = e.target.dataset.slot;
-    if (!e.target.value.trim()) {
-      e.target.value = DEFAULT_EPISODE_TITLES[id] || `Episodul ${id}`;
-      state.videoMeta[id].title = e.target.value;
+    if (!e.target.classList) return;
+    if (e.target.classList.contains('vslot-title-input')) {
+      const ep = findEpisode(e.target.dataset.series, e.target.dataset.slot);
+      if (ep && !e.target.value.trim()) { e.target.value = ep.title = 'Episod fără titlu'; }
+      saveState();
+    } else if (e.target.classList.contains('series-title-input')) {
+      const s = findSeries(e.target.dataset.series);
+      if (s && !e.target.value.trim()) { e.target.value = s.name = 'Serial nou'; }
+      saveState();
     }
-    saveState();
   }, true); // capture — blur nu urcă (bubble)
   list?.addEventListener('click', e => {
     const watchedBtn = e.target.closest('.vslot-watched-btn');
-    if (watchedBtn) { toggleWatched(watchedBtn.dataset.slot); return; }
+    if (watchedBtn) { toggleWatched(watchedBtn.dataset.series, watchedBtn.dataset.slot); return; }
 
     const playBtn = e.target.closest('.vslot-play');
     if (playBtn) {
       const id = playBtn.dataset.slot;
       const titleInput = document.querySelector(`.vslot-title-input[data-slot="${id}"]`);
-      openVideoPlayer(id, titleInput ? titleInput.value : `Episodul ${id}`);
+      openVideoPlayer(id, titleInput ? titleInput.value : 'Video');
       return;
     }
 
     const delBtn = e.target.closest('.vslot-delete');
-    if (delBtn) { deleteVideo(delBtn.dataset.slot); return; }
+    if (delBtn) { deleteVideoEpisode(delBtn.dataset.series, delBtn.dataset.slot); return; }
 
     const pickLabel = e.target.closest('.vslot-pick');
     if (pickLabel && supportsFileHandles) {
@@ -115,6 +128,12 @@ function initLibraryOnce() {
       pickVideoForSlot(pickLabel.dataset.slot);
       return;
     }
+
+    const addEpBtn = e.target.closest('.add-episode-btn');
+    if (addEpBtn) { addEpisode(addEpBtn.dataset.series); return; }
+
+    const delSeriesBtn = e.target.closest('.series-delete-btn');
+    if (delSeriesBtn) { deleteSeries(delSeriesBtn.dataset.series); return; }
   });
 
   restoreSavedVideos();
@@ -201,11 +220,12 @@ function renderPubs() {
 }
 
 /* ============================================
-   MATERIALE VIDEO (episoade extensibile)
-   📌 Pentru a adăuga episoade noi în viitor: adaugă o intrare
-   nouă în obiectul de mai jos — restul se adaptează automat.
+   MATERIALE VIDEO (seriale + episoade — extensibile de utilizator)
+   state.videoSeries = [ { id, name, episodes: [ {id, title, watched, position} ] } ]
+   Utilizatorul poate adăuga oricâte seriale noi și oricâte episoade
+   în fiecare serial, din interfață ("Adaugă Serial Nou" / "Adaugă Episod").
    ============================================ */
-const DEFAULT_EPISODE_TITLES = {
+const LEGACY_EPISODE_TITLES = {
   1: 'Episodul 1: Adevărata lumină a lumii',
   2: 'Episodul 2',
   3: 'Episodul 3',
@@ -213,15 +233,76 @@ const DEFAULT_EPISODE_TITLES = {
   5: 'Episodul 5',
   6: 'Episodul 6',
 };
-const EPISODE_IDS = Object.keys(DEFAULT_EPISODE_TITLES).map(Number);
 
-function getVideoMeta(id) {
-  if (!state.videoMeta[id]) state.videoMeta[id] = {};
-  const m = state.videoMeta[id];
-  if (!m.title) m.title = DEFAULT_EPISODE_TITLES[id];
-  if (typeof m.watched !== 'boolean') m.watched = false;
-  if (typeof m.position !== 'number') m.position = 0;
-  return m;
+// Migrează modelul vechi (un singur set fix de 6 episoade) în noul model cu seriale,
+// păstrând aceleași ID-uri de episod (compatibile cu fișierele deja reconectate).
+function ensureVideoSeries() {
+  if (!Array.isArray(state.videoSeries)) state.videoSeries = [];
+  if (state.videoSeries.length === 0 && state.videoMeta && Object.keys(state.videoMeta).length) {
+    const episodes = Object.keys(LEGACY_EPISODE_TITLES).map(Number).map(id => {
+      const m = state.videoMeta[id] || {};
+      return {
+        id: String(id),
+        title: m.title || LEGACY_EPISODE_TITLES[id],
+        watched: !!m.watched,
+        position: typeof m.position === 'number' ? m.position : 0,
+      };
+    });
+    state.videoSeries.push({ id: 'serial-implicit', name: 'Viața lui Isus', category: 'isus', episodes });
+  }
+  if (state.videoSeries.length === 0) {
+    state.videoSeries.push({ id: 'serial-implicit', name: 'Viața lui Isus', category: 'isus', episodes: [] });
+  }
+  // Compatibilitate: serialele mai vechi (create înainte de sub-tab-uri) nu au „category" —
+  // le considerăm implicit „Viața lui Isus".
+  let changed = false;
+  state.videoSeries.forEach(s => {
+    if (s.category !== 'isus' && s.category !== 'broadcasting') { s.category = 'isus'; changed = true; }
+  });
+  // Redenumește placeholder-ul vechi implicit, dacă nu a fost redenumit de utilizator.
+  const implicit = state.videoSeries.find(s => s.id === 'serial-implicit' && s.name === 'Materiale Video');
+  if (implicit) { implicit.name = 'Viața lui Isus'; changed = true; }
+  // Serialul „JW Broadcasting” este creat automat, o singură dată — utilizatorul nu
+  // trebuie să apese „Serial Nou” pentru el, doar „Adaugă Episod” în interiorul lui.
+  if (!state.videoSeries.some(s => s.category === 'broadcasting')) {
+    state.videoSeries.push({ id: 'serial-broadcasting', name: 'JW Broadcasting', category: 'broadcasting', episodes: [] });
+    changed = true;
+  }
+  if (changed && typeof saveState === 'function') saveState();
+}
+
+// ── Sub-tab-uri Materiale Video: „Viața lui Isus” / „JW Broadcasting” ──
+const VIDEO_CATEGORIES = ['isus', 'broadcasting'];
+let currentVideoCategory = 'isus';
+
+function switchVideoCategory(cat) {
+  if (!VIDEO_CATEGORIES.includes(cat)) return;
+  currentVideoCategory = cat;
+  document.querySelectorAll('.lib-sub-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.vidcat === cat);
+  });
+  VIDEO_CATEGORIES.forEach(c => {
+    document.getElementById(`video-cat-${c}`)?.classList.toggle('hidden', c !== cat);
+  });
+}
+
+function findSeries(seriesId) {
+  return state.videoSeries.find(s => s.id === seriesId);
+}
+function findEpisode(seriesId, epId) {
+  return findSeries(seriesId)?.episodes.find(e => e.id === epId);
+}
+function findEpisodeAnySeries(epId) {
+  for (const s of state.videoSeries) {
+    const ep = s.episodes.find(e => e.id === epId);
+    if (ep) return ep;
+  }
+  return null;
+}
+function allEpisodeIds() {
+  const ids = [];
+  state.videoSeries.forEach(s => s.episodes.forEach(e => ids.push(e.id)));
+  return ids;
 }
 
 // ── "Memoria" locației fișierelor (File System Access API + IndexedDB) ──
@@ -281,48 +362,154 @@ async function deleteAllVideoHandles() {
 // videoBlobs[slot] = { name, url } — doar în memorie, niciodată persistat
 const videoBlobs = {};
 
-function createVideoSlotEl(id) {
-  const meta = getVideoMeta(id);
+function createVideoSlotEl(ep, seriesId, index) {
+  const loaded = !!videoBlobs[ep.id];
   const el = document.createElement('div');
-  el.className = 'video-slot' + (meta.watched ? ' watched' : '');
-  el.id = `vslot-${id}`;
-  el.dataset.slot = id;
+  el.className = 'video-slot' + (ep.watched ? ' watched' : '') + (loaded ? ' loaded' : '');
+  el.id = `vslot-${ep.id}`;
+  el.dataset.slot = ep.id;
+  el.dataset.series = seriesId;
   el.innerHTML = `
-    <div class="vslot-num">${id}</div>
+    <div class="vslot-num">${index + 1}</div>
     <div class="vslot-info">
-      <input type="text" class="vslot-title-input" data-slot="${id}" maxlength="80"
-             value="${escHtml(meta.title)}" placeholder="Titlu episod..." />
+      <input type="text" class="vslot-title-input" data-slot="${ep.id}" data-series="${seriesId}" maxlength="80"
+             value="${escHtml(ep.title)}" placeholder="Titlu episod..." />
       <div class="vslot-meta-row">
-        <span class="vslot-status empty-status">Nicio înregistrare</span>
-        <span class="vslot-watched-tag ${meta.watched ? '' : 'hidden'}">✅ Vizionat</span>
+        <span class="vslot-status ${loaded ? 'loaded-status' : 'empty-status'}">${loaded ? '✓ ' + escHtml(videoBlobs[ep.id].name) : 'Nicio înregistrare'}</span>
+        <span class="vslot-watched-tag ${ep.watched ? '' : 'hidden'}">✅ Vizionat</span>
       </div>
     </div>
-    <button class="vslot-watched-btn ${meta.watched ? 'active' : ''}" data-slot="${id}" title="Marchează ca vizionat">⭐</button>
-    <button class="vslot-play hidden" data-slot="${id}" title="Redă video">
+    <button class="vslot-watched-btn ${ep.watched ? 'active' : ''}" data-slot="${ep.id}" data-series="${seriesId}" title="Marchează ca vizionat">⭐</button>
+    <button class="vslot-play ${loaded ? '' : 'hidden'}" data-slot="${ep.id}" title="Redă video">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     </button>
-    <label class="vslot-pick" data-slot="${id}" title="Selectează video">
+    <label class="vslot-pick" data-slot="${ep.id}" title="${loaded ? 'Schimbă videoclipul' : 'Selectează video'}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <input type="file" accept="video/*" class="vslot-file" data-slot="${id}" />
+      <input type="file" accept="video/*" class="vslot-file" data-slot="${ep.id}" />
     </label>
-    <button class="vslot-delete hidden" data-slot="${id}" title="Șterge video">
+    <button class="vslot-delete" data-slot="${ep.id}" data-series="${seriesId}" title="Șterge episodul din listă" style="display:flex">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
     </button>
   `;
   return el;
 }
 
+function createSeriesBlockEl(series) {
+  const wrap = document.createElement('div');
+  wrap.className = 'video-series';
+  wrap.dataset.series = series.id;
+  wrap.innerHTML = `
+    <div class="series-header">
+      <span class="series-badge">📂</span>
+      <input type="text" class="series-title-input" data-series="${series.id}" maxlength="80"
+             value="${escHtml(series.name)}" placeholder="Titlu serial..." />
+      <span class="series-count">${series.episodes.length} episoade</span>
+      <button class="series-delete-btn" data-series="${series.id}" title="Șterge serialul">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>
+    <div class="video-cards-list" id="vlist-${series.id}" data-series="${series.id}"></div>
+    ${series.episodes.length === 0 ? '<p class="series-empty-hint">Niciun episod adăugat încă.</p>' : ''}
+    <div class="video-toolbar">
+      <button class="add-media-btn add-episode-btn" data-series="${series.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adaugă Episod
+      </button>
+    </div>
+  `;
+  const list = wrap.querySelector('.video-cards-list');
+  series.episodes.forEach((ep, i) => list.appendChild(createVideoSlotEl(ep, series.id, i)));
+  return wrap;
+}
+
 function renderVideoSlots() {
-  const list = document.getElementById('video-cards-list');
-  const countEl = document.getElementById('video-count');
-  if (!list) return;
-  const pending = {}; // păstrăm blob-urile deja încărcate din sesiunea curentă
-  list.innerHTML = '';
-  EPISODE_IDS.forEach(id => {
-    list.appendChild(createVideoSlotEl(id));
-    if (videoBlobs[id]) applyLoadedVideo(id, { name: videoBlobs[id].name }, true, true);
+  ensureVideoSeries();
+  const containers = {
+    isus: document.getElementById('video-cat-isus'),
+    broadcasting: document.getElementById('video-cat-broadcasting'),
+  };
+  if (!containers.isus || !containers.broadcasting) return;
+  Object.values(containers).forEach(c => { c.innerHTML = ''; });
+
+  state.videoSeries.forEach(series => {
+    const target = containers[series.category] || containers.isus;
+    target.appendChild(createSeriesBlockEl(series));
+    series.episodes.forEach(ep => {
+      if (videoBlobs[ep.id]) applyLoadedVideo(ep.id, { name: videoBlobs[ep.id].name }, true, true);
+    });
   });
-  if (countEl) countEl.textContent = `${EPISODE_IDS.length} episoade`;
+
+  VIDEO_CATEGORIES.forEach(c => containers[c].classList.toggle('hidden', c !== currentVideoCategory));
+}
+
+// ── Adăugare / redenumire / ștergere seriale ──
+function openSeriesModal() {
+  const titleEl = document.querySelector('#series-modal .mini-modal-box h4');
+  if (titleEl) {
+    titleEl.textContent = currentVideoCategory === 'broadcasting'
+      ? 'Serial nou — JW Broadcasting'
+      : 'Serial nou — Viața lui Isus';
+  }
+  document.getElementById('series-modal')?.classList.remove('hidden');
+  document.getElementById('new-series-input')?.focus();
+}
+function closeSeriesModal() {
+  document.getElementById('series-modal')?.classList.add('hidden');
+  const input = document.getElementById('new-series-input');
+  if (input) input.value = '';
+}
+function saveNewSeries() {
+  const input = document.getElementById('new-series-input');
+  const name = input.value.trim();
+  if (!name) { showToast('Introdu un titlu pentru serial!', 'error'); return; }
+  ensureVideoSeries();
+  const id = `vs${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  state.videoSeries.push({ id, name, category: currentVideoCategory, episodes: [] });
+  saveState();
+  input.value = '';
+  closeSeriesModal();
+  renderVideoSlots();
+  showToast(`Serialul „${name}" a fost creat! 📂`, 'success');
+}
+function deleteSeries(seriesId) {
+  const series = findSeries(seriesId);
+  if (!series) return;
+  if (!confirm(`Ștergi serialul „${series.name}" și toate episoadele din listă? (fișierele video de pe calculator nu sunt afectate)`)) return;
+  series.episodes.forEach(ep => {
+    if (videoBlobs[ep.id]) { URL.revokeObjectURL(videoBlobs[ep.id].url); delete videoBlobs[ep.id]; }
+    if (supportsFileHandles) deleteHandle(ep.id).catch(() => {});
+  });
+  state.videoSeries = state.videoSeries.filter(s => s.id !== seriesId);
+  ensureVideoSeries();
+  saveState();
+  renderVideoSlots();
+  showToast('Serial șters 🗑️', 'success');
+}
+
+// ── Adăugare / ștergere episoade în cadrul unui serial ──
+function addEpisode(seriesId) {
+  const series = findSeries(seriesId);
+  if (!series) return;
+  const id = `e${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  series.episodes.push({ id, title: `Episodul ${series.episodes.length + 1}`, watched: false, position: 0 });
+  saveState();
+  renderVideoSlots();
+  const input = document.querySelector(`.vslot-title-input[data-slot="${id}"]`);
+  if (input) { input.focus(); input.select(); }
+  showToast('Episod nou adăugat ✚', 'success');
+}
+function deleteVideoEpisode(seriesId, epId) {
+  if (!confirm('Ștergi acest episod din listă? (fișierul video de pe calculator nu este afectat)')) return;
+  const series = findSeries(seriesId);
+  if (!series) return;
+  const idx = series.episodes.findIndex(e => e.id === epId);
+  if (idx === -1) return;
+  series.episodes.splice(idx, 1);
+  if (videoBlobs[epId]) { URL.revokeObjectURL(videoBlobs[epId].url); delete videoBlobs[epId]; }
+  saveState();
+  if (supportsFileHandles) deleteHandle(epId).catch(() => {});
+  renderVideoSlots();
+  showToast('Episod șters 🗑️', 'success');
 }
 
 // ── Aplică vizual un video încărcat ──
@@ -345,7 +532,7 @@ function applyLoadedVideo(slot, file, silent, keepUrl) {
   slotEl.querySelector('.vslot-pick').title = 'Schimbă videoclipul';
   delete slotEl.dataset.pendingHandle;
 
-  if (!silent) showToast(`Episodul ${slot} încărcat! 🎬`, 'success');
+  if (!silent) showToast('Video încărcat! 🎬', 'success');
 }
 
 // ── Flow cu "memorie" a fișierului (Chrome/Edge — File System Access API) ──
@@ -407,7 +594,7 @@ async function pickVideoForSlot(slot) {
 // La deschiderea paginii Bibliotecă: reconectează automat videourile salvate anterior
 async function restoreSavedVideos() {
   if (!supportsFileHandles) return;
-  for (const id of EPISODE_IDS) {
+  for (const id of allEpisodeIds()) {
     const handle = await getHandle(id).catch(() => null);
     if (!handle) continue;
     try {
@@ -423,49 +610,18 @@ async function restoreSavedVideos() {
   }
 }
 
-function toggleWatched(slot) {
-  const meta = getVideoMeta(slot);
-  meta.watched = !meta.watched;
+function toggleWatched(seriesId, epId) {
+  const ep = findEpisode(seriesId, epId);
+  if (!ep) return;
+  ep.watched = !ep.watched;
   saveState();
-  const slotEl = document.getElementById(`vslot-${slot}`);
-  slotEl.classList.toggle('watched', meta.watched);
-  slotEl.querySelector('.vslot-watched-btn').classList.toggle('active', meta.watched);
-  slotEl.querySelector('.vslot-watched-tag').classList.toggle('hidden', !meta.watched);
-  showToast(meta.watched ? '⭐ Marcat ca vizionat' : '↩️ Marcaj eliminat', 'success');
-}
-
-function deleteVideo(slot) {
-  if (!videoBlobs[slot]) return;
-  if (!confirm('Ștergi acest videoclip din aplicație? (fișierul de pe calculator nu este afectat)')) return;
-
-  URL.revokeObjectURL(videoBlobs[slot].url);
-  delete videoBlobs[slot];
-  getVideoMeta(slot).position = 0;
-  saveState();
-  if (supportsFileHandles) deleteHandle(slot).catch(() => {});
-
-  const slotEl = document.getElementById(`vslot-${slot}`);
-  slotEl.classList.remove('loaded');
-  delete slotEl.dataset.pendingHandle;
-  const statusEl = slotEl.querySelector('.vslot-status');
-  statusEl.className = 'vslot-status empty-status';
-  statusEl.textContent = 'Nicio înregistrare';
-  slotEl.querySelector('.vslot-play').classList.add('hidden');
-  slotEl.querySelector('.vslot-delete').classList.add('hidden');
-  slotEl.querySelector('.vslot-pick').title = 'Selectează video';
-
-  showToast(`Videoclipul ${slot} a fost șters 🗑️`, 'success');
-}
-
-function resetEpisodeTitles() {
-  if (!confirm('Resetezi toate titlurile episoadelor la valorile implicite?')) return;
-  EPISODE_IDS.forEach(id => {
-    getVideoMeta(id).title = DEFAULT_EPISODE_TITLES[id];
-    const input = document.querySelector(`.vslot-title-input[data-slot="${id}"]`);
-    if (input) input.value = DEFAULT_EPISODE_TITLES[id];
-  });
-  saveState();
-  showToast('Titlurile au fost resetate 🔁', 'success');
+  const slotEl = document.getElementById(`vslot-${epId}`);
+  if (slotEl) {
+    slotEl.classList.toggle('watched', ep.watched);
+    slotEl.querySelector('.vslot-watched-btn').classList.toggle('active', ep.watched);
+    slotEl.querySelector('.vslot-watched-tag').classList.toggle('hidden', !ep.watched);
+  }
+  showToast(ep.watched ? '⭐ Marcat ca vizionat' : '↩️ Marcaj eliminat', 'success');
 }
 
 /* ============================================
@@ -492,7 +648,7 @@ function openVideoPlayer(slot, title) {
   vPlayerTitle.textContent = title;
   vPlayerModal.classList.remove('hidden');
 
-  const resumeAt = getVideoMeta(slot).position || 0;
+  const resumeAt = (findEpisodeAnySeries(slot) || {}).position || 0;
   const resumeOnce = () => {
     if (resumeAt > 2 && resumeAt < vPlayerEl.duration - 3) {
       vPlayerEl.currentTime = resumeAt;
@@ -514,7 +670,8 @@ function savePlaybackPosition() {
   const vPlayerEl = document.getElementById('vplayer-el');
   const t = vPlayerEl.currentTime;
   if (!isFinite(t)) return;
-  getVideoMeta(currentPlayingSlot).position = t;
+  const ep = findEpisodeAnySeries(currentPlayingSlot);
+  if (ep) ep.position = t;
   saveState();
 }
 
@@ -531,12 +688,57 @@ function closeVideoPlayer() {
 }
 
 /* ============================================
-   MUZICĂ (163+ melodii, adăugate una câte una)
+   MUZICĂ — două categorii: "Melodiile Regatului" (kingdom)
+   și "Melodii Internaționale" (intl). Ambele folosesc același
+   cod, parametrizat prin `category`, dar au liste, contoare și
+   „continuă ascultarea" separate. Modalul de adăugare și
+   player-ul audio sunt comune (un singur modal/player pe ecran),
+   dar știu mereu pentru ce categorie lucrează.
    ============================================ */
+const MUSIC_CATEGORIES = {
+  kingdom: {
+    stateKey: 'songs',
+    lastPlayedKey: 'lastPlayedSongId',
+    listId: 'music-cards-list',
+    countId: 'music-count',
+    emptyId: 'music-empty',
+    continueCardId: 'continue-listen-card',
+    continueTitleId: 'continue-listen-title',
+    continueTimeId: 'continue-listen-time',
+    continueBtnId: 'continue-listen-btn',
+    addedLabel: 'Melodie',
+  },
+  intl: {
+    stateKey: 'songsIntl',
+    lastPlayedKey: 'lastPlayedSongIntlId',
+    listId: 'music-cards-list-intl',
+    countId: 'music-count-intl',
+    emptyId: 'music-empty-intl',
+    continueCardId: 'continue-listen-card-intl',
+    continueTitleId: 'continue-listen-title-intl',
+    continueTimeId: 'continue-listen-time-intl',
+    continueBtnId: 'continue-listen-btn-intl',
+    addedLabel: 'Melodie internațională',
+  },
+};
+
 const songBlobs = {}; // songBlobs[id] = { name, url } — doar în memorie
 let currentPlayingSongId = null;
-let pendingSongTitle = null;
+let currentPlayingCategory = null;
+let pendingAddCategory = 'kingdom';
 let songPositionSaveTimer = null;
+
+function songsOf(category) {
+  const key = MUSIC_CATEGORIES[category].stateKey;
+  if (!Array.isArray(state[key])) state[key] = [];
+  return state[key];
+}
+
+function categoryOfSongId(id) {
+  if (state.songs?.some(s => s.id === id)) return 'kingdom';
+  if (state.songsIntl?.some(s => s.id === id)) return 'intl';
+  return null;
+}
 
 function initMusicOnce() {
   document.getElementById('song-modal')?.addEventListener('click', e => {
@@ -553,40 +755,47 @@ function initMusicOnce() {
   document.getElementById('audio-player-modal')?.addEventListener('click', e => {
     if (e.target === document.getElementById('audio-player-modal')) closeAudioPlayer();
   });
-  document.getElementById('continue-listen-btn')?.addEventListener('click', () => {
-    if (state.lastPlayedSongId) openAudioPlayer(state.lastPlayedSongId);
-  });
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeAddSongModal(); closeAudioPlayer(); }
   });
 
-  const list = document.getElementById('music-cards-list');
-  list?.addEventListener('input', e => {
-    if (!e.target.classList.contains('vslot-title-input')) return;
-    const song = state.songs.find(s => s.id === e.target.dataset.slot);
-    if (song) song.title = e.target.value;
-  });
-  list?.addEventListener('blur', e => {
-    if (!e.target.classList || !e.target.classList.contains('vslot-title-input')) return;
-    const song = state.songs.find(s => s.id === e.target.dataset.slot);
-    if (song && !e.target.value.trim()) e.target.value = song.title = 'Melodie fără titlu';
-    saveState();
-  }, true);
-  list?.addEventListener('click', e => {
-    const playBtn = e.target.closest('.vslot-play');
-    if (playBtn) { openAudioPlayer(playBtn.dataset.slot); return; }
+  Object.entries(MUSIC_CATEGORIES).forEach(([category, cfg]) => {
+    document.getElementById(cfg.continueBtnId)?.addEventListener('click', () => {
+      const lastId = state[cfg.lastPlayedKey];
+      if (lastId) openAudioPlayer(lastId, category);
+    });
 
-    const delBtn = e.target.closest('.vslot-delete');
-    if (delBtn) { deleteSong(delBtn.dataset.slot); return; }
+    const list = document.getElementById(cfg.listId);
+    list?.addEventListener('input', e => {
+      if (!e.target.classList.contains('vslot-title-input')) return;
+      const song = songsOf(category).find(s => s.id === e.target.dataset.slot);
+      if (song) song.title = e.target.value;
+    });
+    list?.addEventListener('blur', e => {
+      if (!e.target.classList || !e.target.classList.contains('vslot-title-input')) return;
+      const song = songsOf(category).find(s => s.id === e.target.dataset.slot);
+      if (song && !e.target.value.trim()) e.target.value = song.title = 'Melodie fără titlu';
+      saveState();
+    }, true);
+    list?.addEventListener('click', e => {
+      const playBtn = e.target.closest('.vslot-play');
+      if (playBtn) { openAudioPlayer(playBtn.dataset.slot, category); return; }
 
-    const pickLabel = e.target.closest('.vslot-pick');
-    if (pickLabel) { e.preventDefault(); reconnectSongFile(pickLabel.dataset.slot); return; }
+      const delBtn = e.target.closest('.vslot-delete');
+      if (delBtn) { deleteSong(delBtn.dataset.slot, category); return; }
+
+      const pickLabel = e.target.closest('.vslot-pick');
+      if (pickLabel) { e.preventDefault(); reconnectSongFile(pickLabel.dataset.slot, category); return; }
+    });
   });
 }
 
 // ── Adăugare melodie nouă (titlu + selectare fișier) ──
-function openAddSongModal() {
+function openAddSongModal(category = 'kingdom') {
+  pendingAddCategory = category;
+  const titleEl = document.getElementById('song-modal-title');
+  if (titleEl) titleEl.textContent = category === 'intl' ? 'Melodie internațională nouă' : 'Melodie nouă';
   document.getElementById('song-modal')?.classList.remove('hidden');
   document.getElementById('song-title-input')?.focus();
 }
@@ -599,20 +808,21 @@ async function saveNewSong() {
   const titleIn = document.getElementById('song-title-input');
   const title = titleIn.value.trim();
   if (!title) { showToast('Introdu un titlu pentru melodie!', 'error'); return; }
-  pendingSongTitle = title;
+  const category = pendingAddCategory;
   closeAddSongModal();
-  await pickFileForNewSong(title);
+  await pickFileForNewSong(title, category);
 }
 
-async function pickFileForNewSong(title) {
+async function pickFileForNewSong(title, category = 'kingdom') {
   const id = `s${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const cfg = MUSIC_CATEGORIES[category];
 
   const finish = async (file, handle) => {
     songBlobs[id] = { name: file.name, url: URL.createObjectURL(file) };
-    state.songs.push({ id, title, position: 0 });
+    songsOf(category).push({ id, title, position: 0 });
     if (handle && supportsFileHandles) await saveHandle(`song-${id}`, handle).catch(() => {});
     saveState();
-    renderMusicPanel();
+    renderMusicPanel(category);
     showToast(`„${title}" a fost adăugată! 🎵`, 'success');
   };
 
@@ -631,6 +841,7 @@ async function pickFileForNewSong(title) {
   } else {
     pickWithClassicInput(finish);
   }
+  void cfg; // rezervat pentru eventuale etichete specifice categoriei
 }
 
 function pickWithClassicInput(onFile) {
@@ -648,7 +859,8 @@ function pickWithClassicInput(onFile) {
 }
 
 // ── Reconectare fișier existent (Chrome/Edge — după ce permisiunea a expirat) ──
-async function reconnectSongFile(id) {
+async function reconnectSongFile(id, category) {
+  category = category || categoryOfSongId(id) || 'kingdom';
   if (supportsFileHandles) {
     const handle = await getHandle(`song-${id}`).catch(() => null);
     if (handle) {
@@ -657,7 +869,7 @@ async function reconnectSongFile(id) {
         if (perm === 'granted') {
           const file = await handle.getFile();
           songBlobs[id] = { name: file.name, url: URL.createObjectURL(file) };
-          renderMusicPanel();
+          renderMusicPanel(category);
           return;
         }
       } catch { /* trecem la selectare clasică mai jos */ }
@@ -665,36 +877,41 @@ async function reconnectSongFile(id) {
   }
   pickWithClassicInput((file) => {
     songBlobs[id] = { name: file.name, url: URL.createObjectURL(file) };
-    renderMusicPanel();
+    renderMusicPanel(category);
   });
 }
 
 async function restoreSavedSongs() {
   if (!supportsFileHandles) return;
-  for (const song of state.songs) {
-    if (songBlobs[song.id]) continue;
-    const handle = await getHandle(`song-${song.id}`).catch(() => null);
-    if (!handle) continue;
-    try {
-      const perm = await handle.queryPermission({ mode: 'read' });
-      if (perm === 'granted') {
-        const file = await handle.getFile();
-        songBlobs[song.id] = { name: file.name, url: URL.createObjectURL(file) };
-      }
-    } catch { /* rămâne needs-reconnect, afișat la randare */ }
+  for (const category of Object.keys(MUSIC_CATEGORIES)) {
+    for (const song of songsOf(category)) {
+      if (songBlobs[song.id]) continue;
+      const handle = await getHandle(`song-${song.id}`).catch(() => null);
+      if (!handle) continue;
+      try {
+        const perm = await handle.queryPermission({ mode: 'read' });
+        if (perm === 'granted') {
+          const file = await handle.getFile();
+          songBlobs[song.id] = { name: file.name, url: URL.createObjectURL(file) };
+        }
+      } catch { /* rămâne needs-reconnect, afișat la randare */ }
+    }
   }
 }
 
-function deleteSong(id) {
+function deleteSong(id, category) {
+  category = category || categoryOfSongId(id) || 'kingdom';
   if (!confirm('Ștergi această melodie din listă? (fișierul de pe calculator nu este afectat)')) return;
-  const idx = state.songs.findIndex(s => s.id === id);
+  const list = songsOf(category);
+  const idx = list.findIndex(s => s.id === id);
   if (idx === -1) return;
-  state.songs.splice(idx, 1);
+  list.splice(idx, 1);
   if (songBlobs[id]) { URL.revokeObjectURL(songBlobs[id].url); delete songBlobs[id]; }
-  if (state.lastPlayedSongId === id) state.lastPlayedSongId = null;
+  const cfg = MUSIC_CATEGORIES[category];
+  if (state[cfg.lastPlayedKey] === id) state[cfg.lastPlayedKey] = null;
   saveState();
   if (supportsFileHandles) deleteHandle(`song-${id}`).catch(() => {});
-  renderMusicPanel();
+  renderMusicPanel(category);
   showToast('Melodie ștearsă 🗑️', 'success');
 }
 
@@ -736,38 +953,51 @@ function createSongSlotEl(song, index) {
   return el;
 }
 
-function renderMusicPanel() {
-  const list = document.getElementById('music-cards-list');
-  const countEl = document.getElementById('music-count');
-  const emptyEl = document.getElementById('music-empty');
-  if (!list) return;
-
-  countEl.textContent = `${state.songs.length} melodii`;
-
-  list.querySelectorAll('.song-slot').forEach(el => el.remove());
-  if (state.songs.length === 0) {
-    if (emptyEl) emptyEl.style.display = '';
+function renderMusicPanel(category) {
+  if (category) {
+    renderMusicCategoryPanel(category);
   } else {
-    if (emptyEl) emptyEl.style.display = 'none';
-    state.songs.forEach((song, i) => list.appendChild(createSongSlotEl(song, i)));
-  }
-
-  // Card "Continuă ascultarea"
-  const continueCard = document.getElementById('continue-listen-card');
-  const lastSong = state.songs.find(s => s.id === state.lastPlayedSongId);
-  if (lastSong && lastSong.position > 3) {
-    continueCard.classList.remove('hidden');
-    document.getElementById('continue-listen-title').textContent = lastSong.title;
-    document.getElementById('continue-listen-time').textContent = `de la ${formatSongTime(lastSong.position)}`;
-  } else {
-    continueCard.classList.add('hidden');
+    Object.keys(MUSIC_CATEGORIES).forEach(renderMusicCategoryPanel);
   }
 }
 
-/* ── Player audio ── */
-function openAudioPlayer(id) {
-  if (!songBlobs[id]) { reconnectSongFile(id); return; }
-  const song = state.songs.find(s => s.id === id);
+function renderMusicCategoryPanel(category) {
+  const cfg = MUSIC_CATEGORIES[category];
+  const list = document.getElementById(cfg.listId);
+  const countEl = document.getElementById(cfg.countId);
+  const emptyEl = document.getElementById(cfg.emptyId);
+  if (!list) return;
+
+  const songs = songsOf(category);
+  if (countEl) countEl.textContent = `${songs.length} melodii`;
+
+  list.querySelectorAll('.song-slot').forEach(el => el.remove());
+  if (songs.length === 0) {
+    if (emptyEl) emptyEl.style.display = '';
+  } else {
+    if (emptyEl) emptyEl.style.display = 'none';
+    songs.forEach((song, i) => list.appendChild(createSongSlotEl(song, i)));
+  }
+
+  // Card "Continuă ascultarea"
+  const continueCard = document.getElementById(cfg.continueCardId);
+  const lastSong = songs.find(s => s.id === state[cfg.lastPlayedKey]);
+  if (continueCard) {
+    if (lastSong && lastSong.position > 3) {
+      continueCard.classList.remove('hidden');
+      document.getElementById(cfg.continueTitleId).textContent = lastSong.title;
+      document.getElementById(cfg.continueTimeId).textContent = `de la ${formatSongTime(lastSong.position)}`;
+    } else {
+      continueCard.classList.add('hidden');
+    }
+  }
+}
+
+/* ── Player audio (comun ambelor categorii) ── */
+function openAudioPlayer(id, category) {
+  category = category || categoryOfSongId(id) || 'kingdom';
+  if (!songBlobs[id]) { reconnectSongFile(id, category); return; }
+  const song = songsOf(category).find(s => s.id === id);
   if (!song) return;
 
   const modal = document.getElementById('audio-player-modal');
@@ -775,7 +1005,8 @@ function openAudioPlayer(id) {
   const titleEl = document.getElementById('aplayer-title');
 
   currentPlayingSongId = id;
-  state.lastPlayedSongId = id;
+  currentPlayingCategory = category;
+  state[MUSIC_CATEGORIES[category].lastPlayedKey] = id;
   audioEl.src = songBlobs[id].url;
   titleEl.textContent = song.title;
   modal.classList.remove('hidden');
@@ -796,13 +1027,13 @@ function openAudioPlayer(id) {
   audioEl.onpause = saveSongPosition;
   audioEl.onended = () => playAdjacentSong(1);
 
-  renderMusicPanel();
+  renderMusicPanel(category);
 }
 
 function saveSongPosition() {
-  if (currentPlayingSongId == null) return;
+  if (currentPlayingSongId == null || !currentPlayingCategory) return;
   const audioEl = document.getElementById('aplayer-el');
-  const song = state.songs.find(s => s.id === currentPlayingSongId);
+  const song = songsOf(currentPlayingCategory).find(s => s.id === currentPlayingSongId);
   if (!song || !isFinite(audioEl.currentTime)) return;
   song.position = audioEl.currentTime;
   saveState();
@@ -817,300 +1048,20 @@ function closeAudioPlayer() {
   audioEl.pause();
   audioEl.src = '';
   modal.classList.add('hidden');
+  const playedCategory = currentPlayingCategory;
   currentPlayingSongId = null;
+  currentPlayingCategory = null;
   saveState();
-  renderMusicPanel();
+  renderMusicPanel(playedCategory);
 }
 
 function playAdjacentSong(dir) {
-  const idx = state.songs.findIndex(s => s.id === currentPlayingSongId);
+  if (!currentPlayingCategory) return;
+  const songs = songsOf(currentPlayingCategory);
+  const idx = songs.findIndex(s => s.id === currentPlayingSongId);
   if (idx === -1) return;
   let next = idx + dir;
-  while (next >= 0 && next < state.songs.length && !songBlobs[state.songs[next].id]) next += dir;
-  if (next < 0 || next >= state.songs.length) { closeAudioPlayer(); return; }
-  openAudioPlayer(state.songs[next].id);
-}
-
-/* ============================================
-   MUZICĂ INTERNAȚIONALĂ (aceeași logică ca „Melodiile Mele”,
-   dar cu propria listă/stocare — cele două secțiuni sunt complet
-   independente una de cealaltă).
-   ============================================ */
-const songBlobsIntl = {};
-let currentPlayingSongIntlId = null;
-let musicIntlInitialized = false;
-
-function initMusicIntlOnce() {
-  if (musicIntlInitialized) return;
-  musicIntlInitialized = true;
-
-  document.getElementById('song-modal-intl')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('song-modal-intl')) closeAddSongModalIntl();
-  });
-  document.getElementById('song-title-input-intl')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') saveNewSongIntl();
-  });
-
-  document.getElementById('aplayer-close-intl')?.addEventListener('click', closeAudioPlayerIntl);
-  document.getElementById('aplayer-exit-intl')?.addEventListener('click', closeAudioPlayerIntl);
-  document.getElementById('aplayer-next-intl')?.addEventListener('click', () => playAdjacentSongIntl(1));
-  document.getElementById('aplayer-prev-intl')?.addEventListener('click', () => playAdjacentSongIntl(-1));
-  document.getElementById('audio-player-modal-intl')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('audio-player-modal-intl')) closeAudioPlayerIntl();
-  });
-  document.getElementById('continue-listen-btn-intl')?.addEventListener('click', () => {
-    if (state.lastPlayedSongIntlId) openAudioPlayerIntl(state.lastPlayedSongIntlId);
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeAddSongModalIntl(); closeAudioPlayerIntl(); }
-  });
-
-  const list = document.getElementById('music-intl-cards-list');
-  list?.addEventListener('input', e => {
-    if (!e.target.classList.contains('vslot-title-input')) return;
-    const song = state.songsIntl.find(s => s.id === e.target.dataset.slot);
-    if (song) song.title = e.target.value;
-  });
-  list?.addEventListener('blur', e => {
-    if (!e.target.classList || !e.target.classList.contains('vslot-title-input')) return;
-    const song = state.songsIntl.find(s => s.id === e.target.dataset.slot);
-    if (song && !e.target.value.trim()) e.target.value = song.title = 'Melodie fără titlu';
-    saveState();
-  }, true);
-  list?.addEventListener('click', e => {
-    const playBtn = e.target.closest('.vslot-play');
-    if (playBtn) { openAudioPlayerIntl(playBtn.dataset.slot); return; }
-
-    const delBtn = e.target.closest('.vslot-delete');
-    if (delBtn) { deleteSongIntl(delBtn.dataset.slot); return; }
-
-    const pickLabel = e.target.closest('.vslot-pick');
-    if (pickLabel) { e.preventDefault(); reconnectSongFileIntl(pickLabel.dataset.slot); return; }
-  });
-}
-
-// ── Adăugare melodie nouă (titlu + selectare fișier) ──
-function openAddSongModalIntl() {
-  document.getElementById('song-modal-intl')?.classList.remove('hidden');
-  document.getElementById('song-title-input-intl')?.focus();
-}
-function closeAddSongModalIntl() {
-  document.getElementById('song-modal-intl')?.classList.add('hidden');
-  document.getElementById('song-title-input-intl').value = '';
-}
-
-async function saveNewSongIntl() {
-  const titleIn = document.getElementById('song-title-input-intl');
-  const title = titleIn.value.trim();
-  if (!title) { showToast('Introdu un titlu pentru melodie!', 'error'); return; }
-  closeAddSongModalIntl();
-  await pickFileForNewSongIntl(title);
-}
-
-async function pickFileForNewSongIntl(title) {
-  const id = `si${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
-  const finish = async (file, handle) => {
-    songBlobsIntl[id] = { name: file.name, url: URL.createObjectURL(file) };
-    state.songsIntl.push({ id, title, position: 0 });
-    if (handle && supportsFileHandles) await saveHandle(`song-intl-${id}`, handle).catch(() => {});
-    saveState();
-    renderMusicPanelIntl();
-    showToast(`„${title}” a fost adăugată! 🎵`, 'success');
-  };
-
-  if (supportsFileHandles) {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        types: [{ description: 'Audio', accept: { 'audio/*': ['.mp3', '.m4a', '.wav', '.ogg', '.aac', '.flac'] } }],
-        multiple: false,
-      });
-      const file = await handle.getFile();
-      await finish(file, handle);
-    } catch (err) {
-      if (err?.name === 'AbortError') return;
-      pickWithClassicInput(finish);
-    }
-  } else {
-    pickWithClassicInput(finish);
-  }
-}
-
-// ── Reconectare fișier existent (Chrome/Edge — după ce permisiunea a expirat) ──
-async function reconnectSongFileIntl(id) {
-  if (supportsFileHandles) {
-    const handle = await getHandle(`song-intl-${id}`).catch(() => null);
-    if (handle) {
-      try {
-        const perm = await handle.requestPermission({ mode: 'read' });
-        if (perm === 'granted') {
-          const file = await handle.getFile();
-          songBlobsIntl[id] = { name: file.name, url: URL.createObjectURL(file) };
-          renderMusicPanelIntl();
-          return;
-        }
-      } catch { /* trecem la selectare clasică mai jos */ }
-    }
-  }
-  pickWithClassicInput((file) => {
-    songBlobsIntl[id] = { name: file.name, url: URL.createObjectURL(file) };
-    renderMusicPanelIntl();
-  });
-}
-
-async function restoreSavedSongsIntl() {
-  if (!supportsFileHandles) return;
-  for (const song of state.songsIntl) {
-    if (songBlobsIntl[song.id]) continue;
-    const handle = await getHandle(`song-intl-${song.id}`).catch(() => null);
-    if (!handle) continue;
-    try {
-      const perm = await handle.queryPermission({ mode: 'read' });
-      if (perm === 'granted') {
-        const file = await handle.getFile();
-        songBlobsIntl[song.id] = { name: file.name, url: URL.createObjectURL(file) };
-      }
-    } catch { /* rămâne needs-reconnect, afișat la randare */ }
-  }
-}
-
-function deleteSongIntl(id) {
-  if (!confirm('Ștergi această melodie din listă? (fișierul de pe calculator nu este afectat)')) return;
-  const idx = state.songsIntl.findIndex(s => s.id === id);
-  if (idx === -1) return;
-  state.songsIntl.splice(idx, 1);
-  if (songBlobsIntl[id]) { URL.revokeObjectURL(songBlobsIntl[id].url); delete songBlobsIntl[id]; }
-  if (state.lastPlayedSongIntlId === id) state.lastPlayedSongIntlId = null;
-  saveState();
-  if (supportsFileHandles) deleteHandle(`song-intl-${id}`).catch(() => {});
-  renderMusicPanelIntl();
-  showToast('Melodie ștearsă 🗑️', 'success');
-}
-
-function createSongSlotElIntl(song, index) {
-  const el = document.createElement('div');
-  const loaded = !!songBlobsIntl[song.id];
-  el.className = 'video-slot song-slot' + (loaded ? ' loaded' : '') + (song.id === currentPlayingSongIntlId ? ' playing' : '');
-  el.id = `sslot-intl-${song.id}`;
-  el.dataset.slot = song.id;
-  el.innerHTML = `
-    <div class="vslot-num">${index + 1}</div>
-    <div class="vslot-info">
-      <input type="text" class="vslot-title-input" data-slot="${song.id}" maxlength="120"
-             value="${escHtml(song.title)}" placeholder="Titlu melodie..." />
-      <div class="vslot-meta-row">
-        <span class="vslot-status ${loaded ? 'loaded-status' : 'permission-status'}">
-          ${loaded ? '✓ ' + escHtml(songBlobsIntl[song.id].name) : '🔒 Apasă pe pictograma folder pentru a reconecta fișierul'}
-        </span>
-        ${song.position > 3 ? `<span class="vslot-watched-tag">⏱ ${formatSongTime(song.position)}</span>` : ''}
-      </div>
-    </div>
-    <button class="vslot-play ${loaded ? '' : 'hidden'}" data-slot="${song.id}" title="Redă melodia">
-      <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    </button>
-    <button class="vslot-pick" data-slot="${song.id}" title="${loaded ? 'Reconectează fișierul' : 'Selectează fișierul'}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    </button>
-    <button class="vslot-delete" data-slot="${song.id}" title="Șterge melodia" style="display:flex">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-    </button>
-  `;
-  return el;
-}
-
-function renderMusicPanelIntl() {
-  const list = document.getElementById('music-intl-cards-list');
-  const countEl = document.getElementById('music-intl-count');
-  const emptyEl = document.getElementById('music-intl-empty');
-  if (!list) return;
-
-  countEl.textContent = `${state.songsIntl.length} melodii`;
-
-  list.querySelectorAll('.song-slot').forEach(el => el.remove());
-  if (state.songsIntl.length === 0) {
-    if (emptyEl) emptyEl.style.display = '';
-  } else {
-    if (emptyEl) emptyEl.style.display = 'none';
-    state.songsIntl.forEach((song, i) => list.appendChild(createSongSlotElIntl(song, i)));
-  }
-
-  const continueCard = document.getElementById('continue-listen-card-intl');
-  const lastSong = state.songsIntl.find(s => s.id === state.lastPlayedSongIntlId);
-  if (lastSong && lastSong.position > 3) {
-    continueCard.classList.remove('hidden');
-    document.getElementById('continue-listen-title-intl').textContent = lastSong.title;
-    document.getElementById('continue-listen-time-intl').textContent = `de la ${formatSongTime(lastSong.position)}`;
-  } else {
-    continueCard.classList.add('hidden');
-  }
-}
-
-/* ── Player audio — Muzică internațională ── */
-function openAudioPlayerIntl(id) {
-  if (!songBlobsIntl[id]) { reconnectSongFileIntl(id); return; }
-  const song = state.songsIntl.find(s => s.id === id);
-  if (!song) return;
-
-  const modal = document.getElementById('audio-player-modal-intl');
-  const audioEl = document.getElementById('aplayer-el-intl');
-  const titleEl = document.getElementById('aplayer-title-intl');
-
-  currentPlayingSongIntlId = id;
-  state.lastPlayedSongIntlId = id;
-  audioEl.src = songBlobsIntl[id].url;
-  titleEl.textContent = song.title;
-  modal.classList.remove('hidden');
-
-  const resumeAt = song.position || 0;
-  const resumeOnce = () => {
-    if (resumeAt > 2 && resumeAt < audioEl.duration - 2) {
-      audioEl.currentTime = resumeAt;
-      showToast(`▶️ Continuă de la ${formatSongTime(resumeAt)}`, 'success');
-    }
-    audioEl.removeEventListener('loadedmetadata', resumeOnce);
-  };
-  audioEl.addEventListener('loadedmetadata', resumeOnce);
-  audioEl.play().catch(() => {});
-
-  clearInterval(songIntlPositionSaveTimer);
-  songIntlPositionSaveTimer = setInterval(saveSongPositionIntl, 4000);
-  audioEl.onpause = saveSongPositionIntl;
-  audioEl.onended = () => playAdjacentSongIntl(1);
-
-  renderMusicPanelIntl();
-}
-
-let songIntlPositionSaveTimer = null;
-
-function saveSongPositionIntl() {
-  if (currentPlayingSongIntlId == null) return;
-  const audioEl = document.getElementById('aplayer-el-intl');
-  const song = state.songsIntl.find(s => s.id === currentPlayingSongIntlId);
-  if (!song || !isFinite(audioEl.currentTime)) return;
-  song.position = audioEl.currentTime;
-  saveState();
-}
-
-function closeAudioPlayerIntl() {
-  const modal = document.getElementById('audio-player-modal-intl');
-  const audioEl = document.getElementById('aplayer-el-intl');
-  if (!modal || !audioEl) return;
-  saveSongPositionIntl();
-  clearInterval(songIntlPositionSaveTimer);
-  audioEl.pause();
-  audioEl.src = '';
-  modal.classList.add('hidden');
-  currentPlayingSongIntlId = null;
-  saveState();
-  renderMusicPanelIntl();
-}
-
-function playAdjacentSongIntl(dir) {
-  const idx = state.songsIntl.findIndex(s => s.id === currentPlayingSongIntlId);
-  if (idx === -1) return;
-  let next = idx + dir;
-  while (next >= 0 && next < state.songsIntl.length && !songBlobsIntl[state.songsIntl[next].id]) next += dir;
-  if (next < 0 || next >= state.songsIntl.length) { closeAudioPlayerIntl(); return; }
-  openAudioPlayerIntl(state.songsIntl[next].id);
+  while (next >= 0 && next < songs.length && !songBlobs[songs[next].id]) next += dir;
+  if (next < 0 || next >= songs.length) { closeAudioPlayer(); return; }
+  openAudioPlayer(songs[next].id, currentPlayingCategory);
 }

@@ -42,6 +42,8 @@ function fs2DateParts(dateStr) {
 // aceeași pereche vestitor + coleg (comparație fără spații/majuscule,
 // nesensibilă la ordine — "Ion + Maria" == "Maria + Ion"). Întoarce
 // rândul găsit sau null.
+// (Păstrată pentru compatibilitate — avertismentul afișat efectiv acum
+// folosește pragul săptămânal de mai jos, fs2CountPairInWeek.)
 function fs2FindPairMatch(vestitor, coleg, excludeId) {
   const v = (vestitor || '').trim().toLowerCase();
   const c = (coleg || '').trim().toLowerCase();
@@ -55,6 +57,56 @@ function fs2FindPairMatch(vestitor, coleg, excludeId) {
     if (!rv || !rc) return false;
     return (rv === v && rc === c) || (rv === c && rc === v);
   }) || null;
+}
+
+// Un colaborator poate fi programat de cel mult 3 ori într-o săptămână.
+// La a 4-a programare este afișat un avertisment.
+const FS2_COLLABORATOR_WEEKLY_LIMIT = 3;
+
+// Calculează cheia săptămânii ISO (an-săptămână, ex. "2026-W34") pentru o
+// dată "yyyy-mm-dd", ca să grupăm programările pe săptămâni calendaristice
+// (luni-duminică), indiferent de an. Întoarce null dacă data lipsește/e invalidă.
+function fs2GetWeekKey(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay() + 6) % 7; // luni=0 ... duminică=6
+  target.setDate(target.getDate() - dayNr + 3); // joia aceleiași săptămâni
+  const firstThursday = new Date(target.getFullYear(), 0, 4);
+  const firstDayNr = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(firstThursday.getDate() - firstDayNr + 3);
+  const weekNumber = 1 + Math.round((target - firstThursday) / (7 * 24 * 3600 * 1000));
+  return `${target.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
+}
+
+// Numără de câte ori aceeași pereche vestitor+coleg (indiferent de ordine)
+// mai apare în ALTE rânduri din aceeași săptămână calendaristică.
+function fs2CountCollaboratorInWeek(collegue, weekKey, excludeId) {
+  const c = (collegue || '').trim().toLowerCase();
+  if (!c || !weekKey) return 0;
+
+  const rows = Array.isArray(state.fieldSchedulingRows) ? state.fieldSchedulingRows : [];
+  return rows.filter(r => {
+    if (r.id === excludeId) return false;
+    if (fs2GetWeekKey(r.date) !== weekKey) return false;
+    const rc = (r.coleg || '').trim().toLowerCase();
+    return rc === c;
+  }).length;
+}
+
+function fs2FindOverLimitCollaborator(vestitor, coleg, date, excludeId) {
+  const weekKey = fs2GetWeekKey(date);
+  if (!weekKey) return null;
+
+  const c = (coleg || '').trim();
+  if (!c) return null;
+
+  const count = fs2CountCollaboratorInWeek(c, weekKey, excludeId) + 1;
+  if (count > FS2_COLLABORATOR_WEEKLY_LIMIT) {
+    return { name: c, count };
+  }
+  return null;
 }
 
 function addFieldSchedulingRow() {
@@ -85,7 +137,7 @@ function updateFieldSchedulingCellSilent(id, field, value) {
   const row = (state.fieldSchedulingRows || []).find(r => r.id === id);
   if (!row) return;
   row[field] = value;
-  saveState();
+  saveStateDebounced();
 }
 
 function deleteFieldSchedulingRow(id) {
@@ -225,18 +277,17 @@ function renderFieldSchedulingTable() {
 
   container.innerHTML = rows.map(row => {
     const { ziua, luna, anul } = fs2DateParts(row.date);
-    const match = fs2FindPairMatch(row.vestitor, row.coleg, row.id);
-    const warningRow = match ? `
+    const overLimit = fs2FindOverLimitCollaborator(row.vestitor, row.coleg, row.date, row.id);
+    const warningRow = overLimit ? `
       <tr class="fs2-warning-row">
         <td colspan="8">
-          ⚠️ ${escHtml((row.vestitor || '').trim())} a mai fost programat cu ${escHtml((row.coleg || '').trim())}
-          ${match.date ? `pe ${escHtml(fs2DateParts(match.date).ziua)} ${escHtml(fs2DateParts(match.date).luna)} ${escHtml(fs2DateParts(match.date).anul)}` : 'anterior'}.
-          Alege alt coleg data aceasta, dacă se poate.
+          ⚠️ ${escHtml(overLimit.name)} este programat ca și colaborator de ${overLimit.count} ori în aceeași săptămână.
+          Limita recomandată este de ${FS2_COLLABORATOR_WEEKLY_LIMIT} ori. Pentru a 4-a ieșire, anunțați înainte.
         </td>
       </tr>` : '';
 
     return `
-      <tr class="fs2-row${match ? ' fs2-row-flagged' : ''}">
+      <tr class="fs2-row${overLimit ? ' fs2-row-flagged' : ''}">
         <td class="fs2-cell fs2-cell-date-wrap">
           <input type="date" class="fs2-cell-input fs2-cell-date" value="${escHtml(row.date || '')}"
             onchange="updateFieldSchedulingCell('${row.id}', 'date', this.value)" />

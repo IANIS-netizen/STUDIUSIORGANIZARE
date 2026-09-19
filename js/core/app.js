@@ -28,6 +28,7 @@ function init() {
   if (typeof fetchWeather === 'function') fetchWeather();
   loadYearText();
   setVerse(DAILY_VERSES.length ? DAILY_VERSES[currentVerseIdx] : null);
+  if (typeof loadVerseColor === 'function') loadVerseColor();
   renderDashboard();
   if (typeof initNotifChecks === 'function') initNotifChecks();
 

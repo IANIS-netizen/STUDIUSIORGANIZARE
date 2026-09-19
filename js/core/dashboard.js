@@ -57,14 +57,33 @@ const WEATHER_CODE_MAP = {
   99: ['⛈️', 'Furtună puternică']
 };
 
+/**
+ * Cere vremea curentă de la Open-Meteo. Încearcă întâi modelul ICON (DWD),
+ * folosit și de WetterOnline / meteoradar.ro, ca temperatura afișată să fie
+ * cât mai apropiată de ce arată acel site. Dacă modelul ICON nu răspunde
+ * pentru zona respectivă, se comută automat pe modelul implicit ("best_match").
+ */
+async function fetchWeatherData() {
+  const base = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,precipitation,weather_code&timezone=Europe%2FBucharest`;
+  try {
+    const res = await fetch(`${base}&models=icon_seamless`);
+    if (!res.ok) throw new Error('ICON model unavailable');
+    const data = await res.json();
+    if (!data.current) throw new Error('ICON model unavailable');
+    return data;
+  } catch (err) {
+    console.warn('Modelul ICON indisponibil, revin la modelul implicit:', err);
+    const res = await fetch(base);
+    if (!res.ok) throw new Error('Weather request failed');
+    return res.json();
+  }
+}
+
 async function fetchWeather() {
   const widget = document.getElementById('weatherWidget');
   if (!widget) return;
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,precipitation,weather_code&timezone=Europe%2FBucharest`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Weather request failed');
-    const data = await res.json();
+    const data = await fetchWeatherData();
     const current = data.current;
     if (!current) throw new Error('No current weather data');
 
@@ -216,6 +235,49 @@ function newVerse() {
   currentVerseIdx = (currentVerseIdx + 1) % DAILY_VERSES.length;
   setVerse(DAILY_VERSES[currentVerseIdx]);
 }
+
+// ============================================
+// VERSE OF THE DAY - paletă culoare
+// ============================================
+function toggleVersePalette() {
+  document.getElementById('versePalette')?.classList.toggle('open');
+}
+
+function applyVerseColor(color) {
+  const textEl = document.getElementById('verseText');
+  const refEl = document.getElementById('verseRef');
+  if (textEl) {
+    textEl.style.borderLeftColor = color;
+    textEl.style.color = color;
+  }
+  if (refEl) refEl.style.color = color;
+}
+
+function selectVerseColor(btn) {
+  const color = btn.dataset.color;
+  document.querySelectorAll('#versePalette .color-swatch').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyVerseColor(color);
+  localStorage.setItem('studiuMeu_verseColor', color);
+}
+
+function loadVerseColor() {
+  const saved = localStorage.getItem('studiuMeu_verseColor');
+  if (!saved) return;
+  applyVerseColor(saved);
+  document.querySelectorAll('#versePalette .color-swatch').forEach(b => {
+    b.classList.toggle('active', b.dataset.color === saved);
+  });
+}
+
+// Închide paleta la click în afara ei
+document.addEventListener('click', (e) => {
+  const palette = document.getElementById('versePalette');
+  const trigger = e.target.closest('.paint-palette-trigger');
+  if (palette && palette.classList.contains('open') && !palette.contains(e.target) && !trigger) {
+    palette.classList.remove('open');
+  }
+});
 
 function readVerseInBible() {
   const v = DAILY_VERSES[currentVerseIdx];

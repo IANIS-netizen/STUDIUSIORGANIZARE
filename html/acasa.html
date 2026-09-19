@@ -3,7 +3,7 @@
       <div>
         <h2 id="greetingText">Bună ziua! 🌿</h2>
         <p class="greeting-sub" id="greetingDate"></p>
-        <div class="weather-widget" id="weatherWidget" style="display:none"
+        <div class="weather-widget" id="weatherWidget" style="display:none" onclick="navigateTo('radarmeteo')" title="Vezi radarul meteo">
           <span class="weather-icon" id="weatherIcon">☀️</span>
           <span class="weather-temp" id="weatherTemp">--°C</span>
           <span class="weather-detail" id="weatherDetail">Reșița</span>
@@ -24,10 +24,14 @@
         </div>
         <p class="year-text-content" id="yearTextDisplay">Apasă pentru a adăuga textul anului...</p>
         <div class="year-text-edit" id="yearTextEdit" style="display:none">
-          <div class="year-color-picker">
-            <span style="font-size:0.75rem;color:var(--text-muted);margin-right:6px">Culoare:</span>
+          <div class="year-color-picker paint-palette open">
             <button class="color-swatch" style="background:#e53e3e" data-color="#e53e3e" onclick="selectYearColor(this)" title="Roșu"></button>
+            <button class="color-swatch" style="background:#f97b4f" data-color="#f97b4f" onclick="selectYearColor(this)" title="Portocaliu"></button>
+            <button class="color-swatch" style="background:#ecc94b" data-color="#ecc94b" onclick="selectYearColor(this)" title="Galben"></button>
+            <button class="color-swatch" style="background:#10c9a0" data-color="#10c9a0" onclick="selectYearColor(this)" title="Verde"></button>
+            <button class="color-swatch" style="background:#4f8ef7" data-color="#4f8ef7" onclick="selectYearColor(this)" title="Albastru"></button>
             <button class="color-swatch" style="background:#805ad5" data-color="#805ad5" onclick="selectYearColor(this)" title="Mov"></button>
+            <button class="color-swatch" style="background:#ed64a6" data-color="#ed64a6" onclick="selectYearColor(this)" title="Roz"></button>
             <button class="color-swatch active" style="background:#e6edf3" data-color="#e6edf3" onclick="selectYearColor(this)" title="Alb"></button>
           </div>
           <div class="year-size-picker">
@@ -123,6 +127,17 @@
       <div class="card verse-card">
         <div class="card-header">
           <h3>✨ Versetul Zilei</h3>
+          <button class="paint-palette-trigger" onclick="toggleVersePalette()" title="Alege o culoare">🎨</button>
+        </div>
+        <div class="paint-palette" id="versePalette">
+          <button class="color-swatch" style="background:#e53e3e" data-color="#e53e3e" onclick="selectVerseColor(this)" title="Roșu"></button>
+          <button class="color-swatch" style="background:#f97b4f" data-color="#f97b4f" onclick="selectVerseColor(this)" title="Portocaliu"></button>
+          <button class="color-swatch" style="background:#ecc94b" data-color="#ecc94b" onclick="selectVerseColor(this)" title="Galben"></button>
+          <button class="color-swatch" style="background:#10c9a0" data-color="#10c9a0" onclick="selectVerseColor(this)" title="Verde"></button>
+          <button class="color-swatch active" style="background:#4f8ef7" data-color="#4f8ef7" onclick="selectVerseColor(this)" title="Albastru"></button>
+          <button class="color-swatch" style="background:#805ad5" data-color="#805ad5" onclick="selectVerseColor(this)" title="Mov"></button>
+          <button class="color-swatch" style="background:#ed64a6" data-color="#ed64a6" onclick="selectVerseColor(this)" title="Roz"></button>
+          <button class="color-swatch" style="background:#e6edf3" data-color="#e6edf3" onclick="selectVerseColor(this)" title="Alb"></button>
         </div>
         <blockquote class="verse-text" id="verseText">
           „El va șterge orice lacrimă din ochii lor și moartea nu va mai fi. Nici jale, nici strigăt, nici durere nu vor mai fi.”
@@ -172,6 +187,11 @@
           <a class="quick-link-item" href="#" onclick="navigateTo('bible')">
             <span class="ql-icon">✏️</span>
             <span>Studiu Biblic Personal</span>
+            <svg viewBox="0 0 24 24" width="14" height="14"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          </a>
+          <a class="quick-link-item" href="#" onclick="navigateTo('radarmeteo')">
+            <span class="ql-icon">🌧️</span>
+            <span>Radar Meteo — Reșița</span>
             <svg viewBox="0 0 24 24" width="14" height="14"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
           </a>
           <a class="quick-link-item" href="https://www.jw.org/ro" target="_blank">

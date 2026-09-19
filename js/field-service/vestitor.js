@@ -13,7 +13,7 @@ function saveVestitorNume() {
   const input = document.getElementById('vestitor-nume');
   if (!input) return;
   state.vestitorNume = input.value;
-  saveState();
+  saveStateDebounced();
 }
 
 // -------- CRONOMETRU --------
@@ -287,27 +287,24 @@ function renderVestitorWhatsAppFields() {
   }
 }
 
-function markVestitorReportSent() {
-  const checkbox = document.getElementById('vestitorReportSentCheckbox');
+function onVestitorReportSentToggle(checkbox) {
   const target = getVestitorReportTargetMonth();
   state.vestitorReportSentMonths = state.vestitorReportSentMonths || {};
 
-  const isChecked = checkbox ? checkbox.checked : true;
-  if (isChecked) {
+  if (checkbox.checked) {
     state.vestitorReportSentMonths[target.key] = true;
+    showToast(`Raport confirmat pentru ${RO_MONTHS_FULL[target.monthIdx0]} ${target.year} — reamintirile pentru luna asta sunt oprite.`);
   } else {
     delete state.vestitorReportSentMonths[target.key];
+    showToast(`Bifă anulată pentru ${RO_MONTHS_FULL[target.monthIdx0]} ${target.year} — reamintirile vor continua.`);
   }
 
   saveState();
   renderVestitorReportSentStatus();
-
-  if (isChecked) {
-    showToast(`Raport confirmat pentru ${RO_MONTHS_FULL[target.monthIdx0]} ${target.year} — reamintirile pentru luna asta sunt oprite.`);
-  }
 }
 
 function renderVestitorReportSentStatus() {
+  const row = document.getElementById('vestitorReportSentRow');
   const checkbox = document.getElementById('vestitorReportSentCheckbox');
   const label = document.getElementById('vestitorReportSentLabel');
   const status = document.getElementById('vestitorReportSentStatus');
@@ -319,12 +316,13 @@ function renderVestitorReportSentStatus() {
   const monthLabel = `${RO_MONTHS_FULL[target.monthIdx0]} ${target.year}`;
 
   checkbox.checked = isSent;
-  if (label) label.textContent = `Raport trimis pentru ${monthLabel}`;
+  if (row) row.classList.toggle('is-sent', isSent);
+  if (label) label.textContent = isSent ? `✅ Raport trimis (${monthLabel})` : `Raport trimis pentru ${monthLabel}`;
 
   if (status) {
     status.textContent = isSent
-      ? `Confirmat — nu vei mai primi reamintiri pentru ${monthLabel}.`
-      : `Nu ai confirmat încă raportul pentru ${monthLabel}. Vei primi reamintiri repetate, pe toată durata zilei, în prima și a doua zi a lunii următoare — până bifezi „Raport trimis”.`;
+      ? `Confirmat — nu vei mai primi reamintiri pentru ${monthLabel}. Poți debifa dacă a fost din greșeală.`
+      : `Bifează aici după ce trimiți raportul pentru ${monthLabel}. Până atunci vei primi reamintiri repetate, pe toată durata zilei, în prima și a doua zi a lunii următoare.`;
   }
 }
 
@@ -364,15 +362,17 @@ function exportVestitorReportReminderICS() {
 
   lines.push('END:VCALENDAR');
 
-  const icsContent = lines.join('\r\n');
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'reamintire-raport-vestitor.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 
-  // Deschidem direct ca data: URI (nu ca descărcare cu <a download>), ca telefonul
-  // să recunoască tipul text/calendar și să ofere direct "Adaugă în Calendar",
-  // în loc să salveze un fișier .ics pe care trebuie deschis separat.
-  const dataUri = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
-  window.open(dataUri, '_blank');
-
-  showToast('Se deschide în calendar 📅 — apasă „Adaugă” ca s-o salvezi.', 'success');
+  showToast('Calendar exportat 📅 — deschide fișierul ca să-l imporți.', 'success');
 }
 
 function renderVestitorReports() {

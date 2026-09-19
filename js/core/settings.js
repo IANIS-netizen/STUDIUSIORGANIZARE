@@ -7,6 +7,7 @@ function openSettingsModal() {
   document.getElementById('settingsModal')?.classList.add('open');
   if (typeof renderTransferSettings === 'function') renderTransferSettings();
   if (typeof updateBackupStatusUI === 'function') updateBackupStatusUI();
+  if (typeof updatePreImportBackupUI === 'function') updatePreImportBackupUI();
   if (typeof initInstallGuide === 'function') initInstallGuide();
 }
 
@@ -19,13 +20,6 @@ function closeSettingsModal() {
 // APP_CHANGELOG de fiecare dată când adaugi o funcționalitate.
 // ============================================
 const APP_CHANGELOG = [
-  {
-    version: 'v0.9.4',
-    date: '30 iulie 2026',
-    changes: [
-      'Secțiune nouă „📚 Biblioteca PDF": importă fișiere PDF direct din telefon sau calculator, cu buton „+ Importă PDF". PDF-urile rămân salvate doar pe acest dispozitiv (nu se încarcă niciunde online și nu sunt incluse în exportul/transferul de date) — pot fi deschise oricând cu „👁️ Deschide" sau șterse cu „🗑️ Șterge".',
-    ],
-  },
   {
     version: 'v0.9.3',
     date: '16 iulie 2026',
