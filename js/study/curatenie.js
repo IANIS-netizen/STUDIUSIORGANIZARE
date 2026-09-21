@@ -36,3 +36,17 @@ function renderCuratenie() {
   el.textContent = msg || '';
   el.style.display = msg ? 'block' : 'none';
 }
+
+// ============================================
+// CURĂȚENIE GENERALĂ (data unică 26.09.2026)
+// ============================================
+const CURATENIE_GENERALA_DATE = new Date(2026, 8, 26); // luna 0-indexată: 8 = septembrie
+
+function renderCurateniaGenerala() {
+  const el = document.getElementById('curateniaGeneralaText');
+  if (!el) return;
+  const now = curatenieDateOnly(new Date());
+  const showDate = now <= CURATENIE_GENERALA_DATE;
+  el.textContent = '26.09.2026';
+  el.style.display = showDate ? 'block' : 'none';
+}

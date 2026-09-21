@@ -1,7 +1,7 @@
 // StudiuMeu — Service Worker
 // Cache-first pentru fisierele aplicatiei = functionare completa offline.
 
-const CACHE_VERSION = 'studiumeu-v38';
+const CACHE_VERSION = 'studiumeu-v41';
 const CACHE_NAME = CACHE_VERSION;
 
 const APP_SHELL = [
@@ -27,6 +27,7 @@ const APP_SHELL = [
   './html/programare-teren.html',
   './html/radar-meteo.html',
   './html/serviciu-teren.html',
+  './html/teritoriile-mele.html',
   './html/setari.html',
   './html/studiu-biblic.html',
   './html/suprapuneri-pwa.html',
@@ -68,6 +69,7 @@ const APP_SHELL = [
   './js/field-service/fieldService.js',
   './js/field-service/fieldServiceUI.js',
   './js/field-service/fieldScheduling.js',
+  './js/field-service/myTerritories.js',
   './js/field-service/standScheduling.js',
   './js/field-service/vestitor.js',
   './icons/icon-192.png',

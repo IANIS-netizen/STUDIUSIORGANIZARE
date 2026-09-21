@@ -46,6 +46,7 @@ function defaultAppState() {
     // anul afișate în tabel se calculează din el, nu se salvează separat.
     fieldSchedulingRows: [],
     standSchedulingRows: [],
+    myTerritories: [],
 
     // Secțiunea "Vestitor": numele vestitorului + rapoartele lunare
     // introduse manual (lună, an, ore, minute, observații).

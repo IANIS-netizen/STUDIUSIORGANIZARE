@@ -1368,6 +1368,12 @@ body {
 }
 .form-row { display: flex; gap: 16px; }
 .form-row .form-group { flex: 1; }
+.form-hint {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  line-height: 1.3;
+}
 
 .form-input, .form-textarea, select.form-input {
   background: var(--bg-elevated);
@@ -4457,6 +4463,216 @@ select.form-input option { background: var(--bg-elevated); }
 
 @media (max-width: 640px) {
   .fs2-table { min-width: 560px; }
+}
+
+/* ============================================
+   TERITORIILE MELE
+   ============================================ */
+.territories-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.3fr);
+  gap: 20px;
+}
+
+.territory-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.territories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.territory-card {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.territory-card-due-soon {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.22);
+}
+
+.territory-card-overdue {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 1px rgba(229,62,62,0.28);
+}
+
+.territory-card-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.territory-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.territory-title-input,
+.territory-area-input,
+.territory-notes-input,
+.territory-mini-select,
+.territory-date-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.territory-title-input {
+  min-width: 0;
+  padding: 7px 9px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.territory-area-input {
+  padding: 7px 9px;
+  font-size: 0.86rem;
+}
+
+.territory-notes-input {
+  min-height: 62px;
+  resize: vertical;
+  padding: 8px 9px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.territory-title-input:focus,
+.territory-area-input:focus,
+.territory-notes-input:focus,
+.territory-mini-select:focus,
+.territory-date-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.territory-status {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.territory-status-neinceput {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.territory-status-in-lucru {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.territory-status-terminat {
+  color: var(--green);
+  background: rgba(16,201,160,0.14);
+}
+
+.territory-due-alert {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.territory-due-alert.active {
+  color: #b45309;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  background: rgba(245,158,11,0.13);
+}
+
+.territory-card-overdue .territory-due-alert.active {
+  color: #b91c1c;
+  background: rgba(229,62,62,0.13);
+}
+
+.territory-meta-row {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.territory-meta-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 130px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.territory-mini-select,
+.territory-date-input {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.territory-last-visit {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding-bottom: 8px;
+}
+
+.territory-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.territory-actions .btn-outline,
+.territory-actions .btn-ghost {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.territory-map-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .territories-layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .territory-card,
+  .territory-card-title-row,
+  .territory-actions {
+    flex-direction: column;
+  }
+
+  .territory-actions {
+    min-width: 0;
+  }
 }
 
 /* ============================================

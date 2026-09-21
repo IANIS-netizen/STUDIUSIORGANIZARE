@@ -15,6 +15,7 @@ const pageTitles = {
   library: 'Bibliotecă',
   biblereader: 'Citește Biblia',
   fieldservice: 'Întrunirea de Serviciu de Teren',
+  myterritories: 'Teritoriile mele',
   fieldschedulingpreview: 'Programare de ieșire pe teren',
   standscheduling: 'Programare de ieșire cu standul',
   preachingassistant: 'Ministry Assistant (Raport)',
@@ -22,7 +23,7 @@ const pageTitles = {
   notes: 'Notițele Mele',
   meetings: 'Programul Meu',
   radarmeteo: 'Radar Meteo — Reșița',
-  curatenie: 'Curățenie Sala Regatului',
+  curatenie: 'Curățenie Sala Regatului Martorii lui Iehova',
   curateniegenerala: 'Curățenie generală la Sala Regatului Martorii lui Iehova',
 };
 
@@ -49,7 +50,7 @@ function navigateTo(page) {
   if (page === 'workbook' || page === 'talk5cuv') {
     document.getElementById('navGroup-workbook')?.classList.add('open');
   }
-  if (page === 'fieldservice' || page === 'preachingassistant' || page === 'fieldschedulingpreview' || page === 'standscheduling' || page === 'vestitor') {
+  if (page === 'fieldservice' || page === 'myterritories' || page === 'preachingassistant' || page === 'fieldschedulingpreview' || page === 'standscheduling' || page === 'vestitor') {
     document.getElementById('navGroup-fieldservice')?.classList.add('open');
   }
 
@@ -84,11 +85,13 @@ function renderPage(page) {
     case 'talk5cuv': renderTalk5Page(); break;
     case 'biblereader': initBibleReader(); break;
     case 'fieldservice': renderFieldServiceList(); break;
+    case 'myterritories': renderMyTerritoriesPage(); break;
     case 'fieldschedulingpreview': renderFieldSchedulingTable(); break;
     case 'standscheduling': renderStandSchedulingTable(); break;
     case 'vestitor': renderVestitorPage(); break;
     case 'radarmeteo': if (typeof renderRadarMeteo === 'function') renderRadarMeteo(); break;
     case 'curatenie': renderCuratenie(); break;
+    case 'curateniegenerala': renderCurateniaGenerala(); break;
   }
   updateWordCounters();
 }

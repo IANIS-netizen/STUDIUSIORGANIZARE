@@ -1,0 +1,62 @@
+  <section class="page" id="page-myterritories">
+    <div class="page-header">
+      <div style="font-size:2rem;line-height:1;margin-bottom:6px">🗺️</div>
+      <h2>Teritoriile mele</h2>
+      <p class="page-sub">Adaugă teritorii pentru predicare și deschide rapid traseul pe hartă.</p>
+    </div>
+
+    <div class="wt-container territories-layout">
+      <div class="card">
+        <div class="card-header">
+          <h3>Adaugă un teritoriu</h3>
+        </div>
+        <div class="territory-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="territoryName">Nume teritoriu</label>
+              <input class="form-input" id="territoryName" type="text" placeholder="Ex. Blocurile de pe Strada Teilor" />
+            </div>
+            <div class="form-group">
+              <label for="territoryArea">Zonă / adresă</label>
+              <input class="form-input" id="territoryArea" type="text" placeholder="Stradă, cartier sau localitate" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="territoryStatus">Stare</label>
+              <select class="form-input" id="territoryStatus">
+                <option value="neinceput">Neînceput</option>
+                <option value="in-lucru">În lucru</option>
+                <option value="terminat">Terminat</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="territoryReceivedDate">Data primirii</label>
+              <input class="form-input" id="territoryReceivedDate" type="date" />
+              <small class="form-hint">Pentru un teritoriu mai vechi, schimbă data cu ziua reală în care l-ai primit — de aici pornește numărătoarea de 4 luni.</small>
+            </div>
+            <div class="form-group">
+              <label for="territoryLastVisit">Ultima vizită</label>
+              <input class="form-input" id="territoryLastVisit" type="date" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="territoryNotes">Notițe</label>
+            <textarea class="form-textarea small" id="territoryNotes" placeholder="Observații, străzi incluse, persoane de revenit..."></textarea>
+          </div>
+          <button type="button" class="btn-primary" onclick="addMyTerritory()">+ Adaugă teritoriu</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Lista teritoriilor</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="btn-outline btn-sm" onclick="exportMyTerritoriesCalendar()">📅 Exportă calendar</button>
+            <span class="badge badge-green" id="territoryCountBadge">0 teritorii</span>
+          </div>
+        </div>
+        <div id="myTerritoriesList" class="territories-list"></div>
+      </div>
+    </div>
+  </section>
